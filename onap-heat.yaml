@@ -1,0 +1,175 @@
+heat_template_version: "2018-08-31"
+description: Sets up 6 k8s worker machines, 2 controller machines, 1 nfs machine and 1 volume for the nfs.
+
+parameters:
+  key_name:
+    type: string
+    description: Name of an existing keypair to use for all instances
+    default: onap-key
+    constraints:
+      - custom_constraint: nova.keypair
+        description: Must provide an existing public keypair
+  worker_flavour:
+    type: string
+    description: Name of an existing flavour to use for all worker instances
+    default: cpu16mem32gb
+    constraints:
+      - custom_constraint: nova.flavor
+        description: Must provide an existing flavour
+  controller_flavour:
+    type: string
+    description: Name of an existing flavour to use for all controller instances
+    default: cpu8mem16gb
+    constraints:
+      - custom_constraint: nova.flavor
+        description: Must provide an existing flavour
+  nfs_flavour:
+    type: string
+    description: Name of an existing flavour to use for NFS instance
+    default: cpu4mem8gb
+    constraints:
+      - custom_constraint: nova.flavor
+        description: Must provide an existing flavour
+  image:
+    type: string
+    description: Name or ID of an exisiting image for all instances.
+    default: ubuntu 
+    constraints:
+      - custom_constraint: glance.image
+        description: Must provide an existing image
+  network:
+    type: string
+    description: The network for the VM
+    default: onap-network
+    constraints:
+      - custom_constraint: neutron.network
+  nfs_volume_size:
+    type: number
+    description: The size of the Cinder volume
+    default: 100
+resources:
+  k8s_worker_1: 
+    type: "OS::Nova::Server"
+    properties: 
+      name:
+       list_join: ['-', [ { get_param: "OS::stack_name" }, 'k8s-worker-1']]
+      networks:
+        - network: { get_param: network }
+      flavor: { get_param: worker_flavour }
+      image: { get_param: image }
+      key_name: { get_param: key_name }
+  k8s_worker_2: 
+    type: "OS::Nova::Server"
+    properties: 
+      name:
+       list_join: ['-', [ { get_param: "OS::stack_name" }, 'k8s-worker-2']]
+      networks:
+        - network: { get_param: network }
+      flavor: { get_param: worker_flavour }
+      image: { get_param: image }
+      key_name: { get_param: key_name }
+  k8s_worker_3: 
+    type: "OS::Nova::Server"
+    properties:
+      name:
+       list_join: ['-', [ { get_param: "OS::stack_name" }, 'k8s-worker-3']] 
+      networks:
+        - network: { get_param: network }
+      flavor: { get_param: worker_flavour }
+      image: { get_param: image }
+      availability_zone: nova
+      key_name: { get_param: key_name }
+  k8s_worker_4: 
+    type: "OS::Nova::Server"
+    properties: 
+      name:
+       list_join: ['-', [ { get_param: "OS::stack_name" }, 'k8s-worker-4']]
+      networks:
+        - network: { get_param: network }
+      flavor: { get_param: worker_flavour }
+      image: { get_param: image }
+      key_name: { get_param: key_name }
+  k8s_worker_5: 
+    type: "OS::Nova::Server"
+    properties: 
+      name:
+       list_join: ['-', [ { get_param: "OS::stack_name" }, 'k8s-worker-5']]
+      networks:
+        - network: { get_param: network }
+      flavor: { get_param: worker_flavour }
+      image: { get_param: image }
+      key_name: { get_param: key_name }
+  k8s_worker_6: 
+    type: "OS::Nova::Server"
+    properties: 
+      name:
+       list_join: ['-', [ { get_param: "OS::stack_name" }, 'k8s-worker-6']]
+      networks:
+        - network: { get_param: network }
+      flavor: { get_param: worker_flavour }
+      image: { get_param: image }
+      key_name: { get_param: key_name }
+  k8s_controller_1: 
+    type: "OS::Nova::Server"
+    properties: 
+      name:
+       list_join: ['-', [ { get_param: "OS::stack_name" }, 'k8s-controller-1']]
+      networks:
+        - network: { get_param: network }
+      flavor: { get_param: controller_flavour }
+      image: { get_param: image }
+      key_name: { get_param: key_name }
+  k8s_controller_2: 
+    type: "OS::Nova::Server"
+    properties: 
+      name:
+       list_join: ['-', [ { get_param: "OS::stack_name" }, 'k8s-controller-2']]
+      networks:
+        - network: { get_param: network }
+      flavor: { get_param: controller_flavour }
+      image: { get_param: image }
+      availability_zone: nova
+      key_name: { get_param: key_name }
+  nfs: 
+    type: "OS::Nova::Server"
+    properties: 
+      name: 
+        list_join: ['-', [ { get_param: "OS::stack_name" }, 'nfs' ]]
+      networks:
+        - network: { get_param: network }
+      flavor: { get_param: nfs_flavour }
+      image: { get_param: image }
+      key_name: { get_param: key_name }
+  nfs_volume: 
+    type: "OS::Cinder::Volume"
+    properties: 
+      name:
+       list_join: ['-', [ { get_param: "OS::stack_name" }, 'nfs-storage']]
+      size: { get_param: nfs_volume_size }
+      volume_type: "51a158f3-de6b-462c-b2a6-ee06254460fe"
+    depends_on: 
+      - nfs
+  nfs_volume_attachment:
+    type: OS::Cinder::VolumeAttachment
+    properties:
+      instance_uuid: { get_resource: nfs }
+      volume_id: { get_resource: nfs_volume }
+      mountpoint: /dev/vdb
+
+outputs:
+  networking:
+    description: IP's for each machine in cluster
+    value: 
+      nfs: 
+          - { get_attr: [nfs, networks, { get_param: network }] }
+      k8s_workers:
+          - { get_attr: [k8s_worker_1, networks, { get_param: network }] }
+          - { get_attr: [k8s_worker_2, networks, { get_param: network }] }
+          - { get_attr: [k8s_worker_3, networks, { get_param: network }] }
+          - { get_attr: [k8s_worker_4, networks, { get_param: network }] }
+          - { get_attr: [k8s_worker_5, networks, { get_param: network }] }
+          - { get_attr: [k8s_worker_6, networks, { get_param: network }] }
+      k8s_controllers:
+          - { get_attr: [k8s_controller_1, networks, { get_param: network }] }
+          - { get_attr: [k8s_controller_2, networks, { get_param: network }] }
+
