@@ -1,0 +1,18 @@
+- hosts: k8s_controllers[0]
+  tasks: 
+    - name: Create helm repository server
+      shell: nohup helm serve </dev/null >/dev/null 2>&1 &
+    - name: Get OOM
+      command: git clone http://gerrit.onap.org/r/oom --recurse-submodules -b {{ oom_branch | default('master') }}
+    - name: Helm deploy plugin
+      copy:
+        src: ~/oom/kubernetes/helm/plugins/
+        dest: ~/.helm/plugins
+        mode: "+rwx"
+        remote_src: yes
+    - name: Build helm charts
+      command: make all -C ~/oom/kubernetes/
+    - name: Deploy All components in ONAP
+      shell: helm deploy dev local/onap --namespace onap -f ~/oom/kubernetes/onap/resources/overrides/onap-all.yaml
+      when: deploy_all|default(false)|bool == true
+

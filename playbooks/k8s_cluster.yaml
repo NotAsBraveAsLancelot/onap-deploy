@@ -1,0 +1,56 @@
+- hosts: k8s_controllers, k8s_workers
+  tasks: 
+    - name: Delete swap space from /etc/fstab
+      become: true
+      lineinfile:
+        path: /etc/fstab
+        state: absent
+        regexp: '^[^\s]+\s+[^\s]+\s+swap\s+'
+      register: remove_swap_space
+    - name: turns off all activate swaps
+      command: swapoff --all
+      when: remove_swap_space is changed
+- hosts: k8s_controllers[0]
+  tasks: 
+    - name: Generate & Copy RKE cluster file to primary controller
+      template:
+        src: ../templates/cluster.yml
+        dest: ~/cluster.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: '0777'
+    - name: Create k8s cluster
+      command: rke up
+    - name: Kube dir
+      file: 
+        path: ~/.kube 
+        state: directory
+    - name: Kube config
+      copy:
+        src: ~/kube_config_cluster.yml
+        dest: ~/.kube/config
+        mode: "+r"
+        remote_src: yes
+    - name: Use onap context by default
+      lineinfile:
+        path: ~/.bashrc
+        line: 'kubectl config use-context onap'
+        state: present
+    - name: Get k8s aliases
+      get_url:
+        url: https://raw.githubusercontent.com/ahmetb/kubectl-alias/master/.kubectl_aliases
+        dest: ~/.kubectl_aliases
+        mode: '0777'
+    - name: Update rc to use k8s aliases
+      blockinfile:
+        path: ~/.bashrc
+        block: |
+          [ -f ~/.kubectl_aliases ] && source ~/.kubectl_aliases
+          function kubectl() { echo "+ kubectl $@">&2; command kubectl $@; }
+    - name: k8s initialization for tiller
+      shell: | 
+        kubectl -n kube-system create serviceaccount tiller
+        kubectl create clusterrolebinding tiller --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+        helm init --service-account tiller
+        kubectl -n kube-system  rollout status deploy/tiller-deploy
+

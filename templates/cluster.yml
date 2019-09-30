@@ -1,0 +1,51 @@
+---
+kubernetes_version: "v1.13.5-rancher1-2"
+cluster_name: "onap"
+private_registries:
+  - url: nexus3.onap.org:10001
+    user: docker
+    password: docker
+    is_default: true
+restore:
+  restore: false
+  snapshot_name: ""
+ignore_docker_version: false
+authentication:
+  strategy: x509
+ssh_agent_auth: false
+authorization:
+  mode: rbac
+network:
+  plugin: flannel
+services:
+  kube-api:
+    service_cluster_ip_range: 10.43.0.0/16
+    pod_security_policy: false
+    always_pull_images: false
+  kube-controller:
+    cluster_cidr: 10.42.0.0/16
+    service_cluster_ip_range: 10.43.0.0/16
+  kubelet:
+    cluster_domain: cluster.local
+    cluster_dns_server: 10.43.0.10
+    fail_swap_on: false
+
+nodes:
+{% for controller in groups['k8s_controllers'] %}
+  - address: {{ controller }}
+    user: {{ ansible_user }}
+    role:
+      - controlplane
+      - etcd
+    ssh_key: |-
+      {{ lookup('file', ansible_ssh_private_key_file) | indent(width=6) }}
+{% endfor %}
+{% for worker in groups['k8s_workers'] %}
+  - address: {{ worker }}
+    user: {{ ansible_user }}
+    role:
+      - worker
+    ssh_key: |-
+      {{ lookup('file', ansible_ssh_private_key_file) | indent(width=6) }}
+{% endfor %}
+

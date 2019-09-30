@@ -1,0 +1,86 @@
+- hosts: nfs
+  tasks:
+    - name: Install NFS specific dependencies
+      become: true
+      apt:
+        update_cache: yes
+        name: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+          - nfs-kernel-server
+          - nfs-common
+
+- hosts: k8s_workers, k8s_controllers
+  tasks:
+    - name: Install common dependencies
+      become: true
+      apt:
+        update_cache: yes
+        name: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+          - make
+          - nfs-common
+          - curl
+          - apt-transport-https
+          - ca-certificates
+          - software-properties-common
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
+
+    - name: Add docker gpg key
+      become: true
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+    - name: Add docker repo
+      become: true
+      apt_repository: 
+        repo: deb https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+    - name: Install docker-ce
+      become: true
+      apt:
+       update_cache: yes 
+       name: '{{ packages }}'
+       state: present
+      vars:
+        packages:
+          - docker-ce=5:18.09.5~3-0~ubuntu-bionic
+          - docker-ce-cli=5:18.09.5~3-0~ubuntu-bionic
+    - name: Add ubuntu to docker group
+      become: true
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+- hosts: k8s_controllers[0]
+  tasks: 
+    - name: Install rke on primary controller
+      become: true
+      get_url:
+        url: https://github.com/rancher/rke/releases/download/v0.2.8/rke_linux-amd64
+        dest: /usr/local/bin/rke
+        mode: "+rx"
+    - name: Install kubectl on primary controller
+      become: true
+      get_url:
+        url: https://storage.googleapis.com/kubernetes-release/release/v1.13.5/bin/linux/amd64/kubectl
+        dest: /usr/local/bin/kubectl
+        mode: "+rx"
+    - name: Download helm on primary controller
+      unarchive:
+        src: http://storage.googleapis.com/kubernetes-helm/helm-v2.12.3-linux-amd64.tar.gz 
+        dest: /tmp
+        copy: no
+    - name: copy helm binary
+      become: true
+      copy:
+        src: /tmp/linux-amd64/helm
+        dest: /usr/local/bin/helm
+        mode: "+rx"
+        remote_src: yes
+

@@ -1,0 +1,58 @@
+- hosts: nfs
+  tasks:
+    - name: Create shared directory
+      become: true
+      file: 
+        path: /dockerdata-nfs 
+        state: directory 
+        mode: 777 
+        owner: root 
+        group: root
+    - name: Create filesystem on volume
+      become: true
+      filesystem: 
+       fstype: ext4 
+       dev: "{{ volume_path | default('/dev/vdb') }}"
+    - name: Mount volume
+      become: true
+      mount: 
+        name: /dockerdata-nfs 
+        src: "{{ volume_path | default('/dev/vdb') }}" 
+        fstype: auto 
+        state: mounted
+    - name: Export dockerdata-nfs
+      become: true
+      lineinfile: 
+        path: /etc/exports
+        state: present
+        line: /dockerdata-nfs *(rw,no_root_squash,no_subtree_check)
+      register: export_nfs
+    - name: Export all shares
+      become: true
+      shell: exportfs -a
+      register: export_shares
+      when: export_nfs is changed
+    - name: Restart NFS server
+      become: true
+      service: 
+        name: nfs-kernel-server 
+        state: restarted
+      when: export_shares is changed
+- hosts: k8s_workers, k8s_controllers
+  tasks:
+    - name: Create dockerdata-nfs directory
+      become: true
+      file: 
+        path: /dockerdata-nfs 
+        state: directory 
+        mode: 777 
+        owner: root 
+        group: root
+    - name: Mount NFS
+      become: true
+      mount: 
+        name: /dockerdata-nfs
+        src: "{{groups['nfs'][0]}}:/dockerdata-nfs"
+        fstype: nfs
+        state: mounted
+

@@ -1,0 +1,14 @@
+---
+
+- name: Install depenedencies
+  import_playbook: dependencies.yaml
+
+- name: Setup NFS
+  import_playbook: nfs.yaml
+
+- name: Setup Kubernetes cluster
+  import_playbook: k8s_cluster.yaml
+
+- name: Build ONAP
+  import_playbook: build.yaml
+
