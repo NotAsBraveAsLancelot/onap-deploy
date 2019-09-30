@@ -1,11 +1,7 @@
 # onap-deploy
-Infrastructure as code for ONAP environment.
-
 This is deployment mechanism follows the procedure outlined in the ONAP documentation [here](https://docs.onap.org/en/dublin/submodules/oom.git/docs/oom_setup_kubernetes_rancher.html).
 
 Openstack is the targeted cloud provisioner for the following suite, however, the ansible playbooks will for the most part apply in multiple environments, I just have not tested any others.
-
-
 
 
 
@@ -38,8 +34,6 @@ Openstack is the targeted cloud provisioner for the following suite, however, th
    ```shell
    openstack stack output show <stack_name> --all  -f json | ./stack_parse host <user> <path_to_key>
    ```
-
-   
 
    
 
