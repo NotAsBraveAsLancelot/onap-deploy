@@ -14,7 +14,7 @@ Openstack is the targeted cloud provisioner for the following suite, however, th
 - `ansible` installed, for more information see [here](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
 - The Openstack rc file available
 - Your current working directory is the base directory of this project
-- Required Flavors available in Openstack
+- Required flavors available in Openstack
 - An Ubuntu 18.04 image available in Openstack
 - An existing key available in Openstack
 - Sufficient privileges to create instances & volumes in Openstack
